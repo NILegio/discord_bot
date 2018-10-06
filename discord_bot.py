@@ -14,22 +14,21 @@ from discord.ext.commands import Bot
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
 
 # контакт, токен
-TOKEN_VK = 'bdd5847d567892bd744fc2865f54381d4ae7b5494a6e3ab93b996a17c8f54620d2ff6af36a50c1daa5c29'
+TOKEN_VK = ''
 FILENAME_VK = os.path.join(THIS_FOLDER, 'last_known_id.txt')
-URL_VK = 'https://api.vk.com/method/wall.get?domain=podcastogru&count=5&filter=owner&access_token={0}&v=5.60'.\
+URL_VK = ''.\
     format(TOKEN_VK)
-BASE_POST_VK_URL = 'https://vk.com/wall-115220159_'  # все записи вввввв
+BASE_POST_VK_URL = ''  # все записи вввввв
 
 # ютуб, токен
-TOKEN_YOUTUBE = 'AIzaSyAbxnp4LAowTIMDJaY5-Bc_4PLfihVGIj4'
+TOKEN_YOUTUBE = ''
 FILENAME_YOUTUBE = os.path.join(THIS_FOLDER, 'last_update.txt')
-URL_YOUTUBE = 'https://www.googleapis.com/youtube/v3/playlistItems?playlistId=UUjL57vLdE5Ae1frLxevzHaw&key={0}' \
-            '&part=snippet&maxResults=5'.format(TOKEN_YOUTUBE)
+URL_YOUTUBE = ''.format(TOKEN_YOUTUBE)
 BASE_POST_YOUTUBE_URL = 'https://www.youtube.com/watch?v='
 
 
-DISCORD_TOKEN = 'NDY2NjkxMDE5NDA1MDAwNzE0.DifxFA.X0VMF5j8Du6ilbSBSbSvjVBDCY8'   # 'NDQ1Mjk0MDY1NjMwNzA3NzYy.DdoYLg.jn2CM30ebDAUTtlcep-kinpukl4'
-CHANNEL_NAME = '201418427091386368'
+DISCORD_TOKEN = ''   # 'NDQ1Mjk0MDY1NjMwNzA3NzYy.DdoYLg.jn2CM30ebDAUTtlcep-kinpukl4'
+CHANNEL_NAME = ''
 BOT_PREFIX = ("!",)
 client = Bot(command_prefix=BOT_PREFIX)
 
