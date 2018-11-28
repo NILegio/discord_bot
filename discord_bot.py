@@ -2,42 +2,37 @@ import datetime
 import time
 import eventlet
 import logging
-import requests
 import os
-import random
 import asyncio
 import aiohttp
 import json
-from discord import Game, Client
+from discord import Game, Embed
 from discord.ext.commands import Bot
+from vk_url_parser import url_parser
+import config
+
 
 THIS_FOLDER = os.path.dirname(os.path.abspath(__file__))
-
-# контакт, токен
-TOKEN_VK = 'bdd5847d567892bd744fc2865f54381d4ae7b5494a6e3ab93b996a17c8f54620d2ff6af36a50c1daa5c29'
 FILENAME_VK = os.path.join(THIS_FOLDER, 'last_known_id.txt')
-URL_VK = 'https://api.vk.com/method/wall.get?domain=podcastogru&count=5&filter=owner&access_token={0}&v=5.60'.\
-    format(TOKEN_VK)
+#  URL_VK = 'https://api.vk.com/method/wall.getById?posts={1}&extended=1&copy_history_depth=2' \
+#         '&access_token={0}&v=5.60'.format(token_list['TOKEN_VK'], list1)
 BASE_POST_VK_URL = 'https://vk.com/wall-115220159_'  # все записи вввввв
 
 # ютуб, токен
-TOKEN_YOUTUBE = 'AIzaSyAbxnp4LAowTIMDJaY5-Bc_4PLfihVGIj4'
+
 FILENAME_YOUTUBE = os.path.join(THIS_FOLDER, 'last_update.txt')
-URL_YOUTUBE = 'https://www.googleapis.com/youtube/v3/playlistItems?playlistId=UUjL57vLdE5Ae1frLxevzHaw&key={0}' \
-            '&part=snippet&maxResults=5'.format(TOKEN_YOUTUBE)
 BASE_POST_YOUTUBE_URL = 'https://www.youtube.com/watch?v='
 
 
-DISCORD_TOKEN = 'NDY2NjkxMDE5NDA1MDAwNzE0.DifxFA.X0VMF5j8Du6ilbSBSbSvjVBDCY8'   # 'NDQ1Mjk0MDY1NjMwNzA3NzYy.DdoYLg.jn2CM30ebDAUTtlcep-kinpukl4'
 CHANNEL_NAME = '201418427091386368'
 BOT_PREFIX = ("!",)
 client = Bot(command_prefix=BOT_PREFIX)
 
 
-async def get_data():   # функция для получения данных с ресурса
+async def get_data(url):   # функция для получения данных с ресурса, работает
     async with aiohttp.ClientSession() as session:
         # raw_feed = await session.get(URL_VK)
-        raw_feed = await session.get(URL_YOUTUBE)
+        raw_feed = await session.get(url)
         feed = await raw_feed.text()
         feed = json.loads(feed)
         return feed
@@ -49,33 +44,36 @@ async def send_new_posts(items, last_update):
     for i in range(len(items)-1, -1, -1):
         # if item['id'] <= last_id:
         if items[i]['snippet']['publishedAt'] <= last_update:
+            print(items[i]['snippet']['publishedAt'])
             continue
         # link = '{!s}{!s}'.format(BASE_POST_VK_URL, item['id'])
         link = '{!s}{!s}'.format(BASE_POST_YOUTUBE_URL, items[i]['snippet']['resourceId']['videoId'])
         await client.send_message(channel, link)
         new_update = items[i]['snippet']['publishedAt']
         print(channel, link, '  ', new_update)
-        break
-    return new_update
+        return new_update  # break раньше здесь был брейк
 
 
 async def check_new_video():    # функция-сборка по поиску, отправки сообщение в дискорд
+    URL_YOUTUBE = 'https://www.googleapis.com/youtube/v3/playlistItems?playlistId=UUjL57vLdE5Ae1frLxevzHaw&key={0}' \
+                  '&part=snippet&maxResults=5'.format(token_list['TOKEN_YOUTUBE'])
     await client.wait_until_ready()
     while not client.is_closed:
-        with open(FILENAME_YOUTUBE, 'rt') as file:
-            last_update = str(file.read())
+        with open(FILENAME_YOUTUBE, 'rt') as file1:
+            last_update = str(file1.read())
             if last_update is None:
                 logging.error('Could not read from storage. Skipped iteration.')
                 return
             logging.error('Last update = {!s}'.format(last_update))
         try:
-            feed = await get_data()
+            feed = await get_data(URL_YOUTUBE)
             if feed is not None:
                 entries = feed['items']
                 new_update = await send_new_posts(entries, last_update)
-                with open(FILENAME_YOUTUBE, 'wt') as file:
-                    file.write(new_update)
-                    logging.error('New date update is {!s}'.format(new_update))
+                if new_update:
+                    with open(FILENAME_YOUTUBE, 'wt') as file2:
+                        file2.write(new_update)
+                        logging.error('New date update is {!s}'.format(new_update))
 
         except Exception as ex:
             logging.error('Exception of type {!s} in check_new_video(): {!s}'.format(type(ex).__name__, str(ex)))
@@ -85,11 +83,33 @@ async def check_new_video():    # функция-сборка по поиску,
         await asyncio.sleep(3600)
 
 
+@client.listen('on_message')
+async def vk_message(message):
+    url_list = url_parser(message.content)
+    if url_list:
+        for ByID in url_list:
+            URL_VK = 'https://api.vk.com/method/wall.getById?posts={1}&extended=1&copy_history_depth=2' \
+                     '&access_token={0}&v=5.92'.format(token_list['TOKEN_VK'], ByID)
+            wall = await get_data(URL_VK)
+            if wall is not None:
+                text = wall['response']['items'][0]['text']
+                try:
+                    author = 'by {0[first_name]} {0[last_name]} '.format(wall['response']['profiles'][0])
+                except KeyError:
+                    print ('Была срань')
+                    author = 'by owner '
+                finally:
+                    group = 'in {}'.format(wall['response']['groups'][0]['name'])
+                em = Embed(description=text, colour=0x4A76A8)
+                em.set_author(name='ВК вещает')
+                em.set_footer(text='{!s}{!s}'.format(author, group))
+                await client.send_message(message.channel, embed=em)
+
+
 @client.command(pass_context=True)
 async def about(context):
-    channel = client.get_channel('445292904127266828')  # для метода say значение channel не нужен
-    msg = 'Приветствую, {0.author.mention}. Я, {1.user.name}, буду рассказывать вам о новых видео своего тезки. ' \
-          'Надеюсь, в будущем я стану полезнее '.format(context.message, client)
+    msg = 'Приветствую, {0.author.mention}. Я, {1.user.name}, буду делать всякое, и, надеюсь, меня не взломают, как ' \
+          'предшественника.'.format(context.message, client)
     await client.say(msg)
 
 
@@ -110,6 +130,6 @@ if __name__ == '__main__':
         with open(FILENAME_YOUTUBE, 'wt') as file:
             file.write(now_day.isoformat())
             logging.error('Start date is {!s}'.format(now_day.isoformat()))
-
+    token_list = config.check_config()
     client.loop.create_task(check_new_video())
-    client.run(DISCORD_TOKEN)
+    client.run(token_list['DISCORD_TOKEN'])

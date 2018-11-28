@@ -109,4 +109,6 @@ ENV/
 draft
 last_update.txt
 last_known_id.txt
-
+config.json
+discord_bot2.py
+test.py
